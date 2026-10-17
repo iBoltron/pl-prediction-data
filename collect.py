@@ -101,7 +101,7 @@ def collect(client, target):
     if not fixtures:
         raise ValueError('No fixtures returned: no-games day or missing coverage; verify independently.')
     season = target.year if target.month >= 7 else target.year - 1
-    history, history_meta = client.matches(season=season)
+    history, history_meta = client.matches(season=season, status='finished')
     validate(history)
     # Explicitly validate the season window because list rows may omit season.
     if any(not date(season, 7, 1) <= kickoff(r).date() < date(season+1, 7, 1) for r in history):
@@ -116,6 +116,8 @@ def collect(client, target):
                         key=kickoff, reverse=True)[:15]
         counts[team] = len(recent)
         selected.update({r['id']: r for r in recent})
+    if any(count == 0 for count in counts.values()):
+        raise ValueError('No completed pre-date history for one or more teams; cannot use this collection for predictions.')
     stats = {}
     for mid in selected:
         stats[mid] = client.get('/v1/matches/' + quote(str(mid), safe='') + '/statistics')
