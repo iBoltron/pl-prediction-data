@@ -42,6 +42,29 @@ class DataTests(unittest.TestCase):
         c.matches.return_value = ([], [])
         with self.assertRaisesRegex(ValueError, 'No fixtures'): collect(c, date(2026, 10, 17))
 
+    def test_finished_history_requested(self):
+        c = Mock()
+        old = fixture(id='old', kickoff_utc='2026-10-10T14:00:00Z', status='finished')
+        c.matches.side_effect = [([fixture()], []), ([old], [])]
+        c.get.return_value = {'data': {}, 'meta': {}}
+        c.calls = 4
+        result = collect(c, date(2026, 10, 17))
+        self.assertEqual(c.matches.call_args.kwargs, {'season': 2026, 'status': 'finished'})
+        self.assertEqual(result['quality']['history_matches_per_team'], {'a': 1, 'b': 1})
+        self.assertEqual(result['quality']['matches_requested_for_xg'], 1)
+
+    def test_empty_history_rejected(self):
+        c = Mock()
+        c.matches.side_effect = [([fixture()], []), ([], [])]
+        with self.assertRaisesRegex(ValueError, 'No completed'):
+            collect(c, date(2026, 10, 17))
+
+    def test_upcoming_history_rejected(self):
+        c = Mock()
+        c.matches.side_effect = [([fixture()], []), ([fixture()], [])]
+        with self.assertRaisesRegex(ValueError, 'No completed'):
+            collect(c, date(2026, 10, 17))
+
     def test_budget(self):
         with self.assertRaisesRegex(ValueError, 'budget'): Client('test', 0).get('/v1/user/me')
 
