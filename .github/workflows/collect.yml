@@ -1,0 +1,39 @@
+name: Collect Premier League data
+on:
+  workflow_dispatch:
+    inputs:
+      match_date:
+        description: 'London date YYYY-MM-DD (blank = today)'
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+      - name: Collect
+        env:
+          BBS_API_KEY: ${{ secrets.BBS_API_KEY }}
+          MATCH_DATE: ${{ inputs.match_date }}
+        run: |
+          if [ -n "$MATCH_DATE" ]; then
+            python collect.py --date "$MATCH_DATE"
+          else
+            python collect.py
+          fi
+      - name: Save results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: premier-league-data
+          path: output/
+          retention-days: 7
+          if-no-files-found: ignore
